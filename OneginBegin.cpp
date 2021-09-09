@@ -16,7 +16,6 @@ const char OUTPUT_FILE[] = "output.txt";
 size_t buffLen = STR_LEN;
 size_t buffAmount = STR_AMOUNT;
 
-void StrReverse(char **str);
 bool IsCyrillic(const char sym);
 int LetterCmp(const char *str1, const char *str2);
 void SwapPtr(void **str1, void **str2);
@@ -55,7 +54,6 @@ int main(int argc, char *argv[]) {
 
             for(size_t bufStr = 0; bufStr < curStr; bufStr++) {
                 original[bufStr] = buffOriginal[bufStr];
-
                 free(buffOriginal[bufStr] = nullptr);
             }
             free(buffOriginal);
