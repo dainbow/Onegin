@@ -28,10 +28,10 @@ int GetLine(char **lineptr, size_t *n, FILE *stream);
 int main(int argc, char *argv[]) {
     PrintHelp(argc, argv);
 
-	FILE *input = fopen(INPUT_FILE, "r");
-	assert(input != nullptr);
+    FILE *input = fopen(INPUT_FILE, "r");
+    assert(input != nullptr);
 
-	FILE *output = fopen(OUTPUT_FILE, "w");
+    FILE *output = fopen(OUTPUT_FILE, "w");
     assert(output != nullptr);
 
     char **original = (char**)calloc(buffAmount, sizeof(char*));
