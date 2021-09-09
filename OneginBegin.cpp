@@ -6,80 +6,150 @@
 #include <math.h>
 #include <string.h>
 
-const int STR_LEN = 200;
-const int STR_AMOUNT = 4000;
-const char END_OF_PART[] = "------------------END OF PART------------------\n";
+const size_t STR_LEN = 200;
+const size_t STR_AMOUNT = 400;
 
-size_t StrLen(const char *str);
+const char END_OF_PART[] = "------------------END OF PART------------------\n";
+const char INPUT_FILE[] = "Onegin.txt";
+const char OUTPUT_FILE[] = "output.txt";
+
+size_t buffLen = STR_LEN;
+size_t buffAmount = STR_AMOUNT;
+
 void StrReverse(char **str);
 bool IsCyrillic(const char sym);
 int LetterCmp(const char *str1, const char *str2);
 void SwapPtr(void **str1, void **str2);
 void GnomeSort(void **original, int (*FuncComp)(const void*, const void*));
 void PrintHelp(int argc, char *argv[]);
+int InversedLetterCmp(const char *str1, const char *str2);
+int GetLine(char **lineptr, size_t *n, FILE *stream);
 
 int main(int argc, char *argv[]) {
     PrintHelp(argc, argv);
 
-	FILE *input = fopen("Onegin.txt", "r");
-	FILE *output = fopen("output.txt", "w");
-
+	FILE *input = fopen(INPUT_FILE, "r");
 	assert(input != nullptr);
-	assert(output != nullptr);
 
-    char **original = (char**)calloc(STR_AMOUNT, sizeof(char*));
+	FILE *output = fopen(OUTPUT_FILE, "w");
+    assert(output != nullptr);
 
+    char **original = (char**)calloc(buffAmount, sizeof(char*));
     assert(original != nullptr);
 
-    for (int curStr = 0; curStr < STR_AMOUNT; curStr++) {
-        original[curStr] = (char*)calloc(STR_LEN, sizeof(char));
+    size_t curStr = 0;
 
-        assert(original[curStr] != nullptr);
+    while((original[curStr] = (char*)calloc(buffLen, sizeof(char))) != nullptr) {
+        if (GetLine(&original[curStr], &buffLen, input) == -1) {
+            break;
+        }
 
-        fgets(original[curStr], STR_LEN, input);
         fputs(original[curStr], output);
-    }
 
+        if (++curStr == buffAmount) {
+            char **buffOriginal = original;
+            buffAmount += STR_LEN;
+
+            original = (char**)calloc(buffAmount, sizeof(char*));
+            assert(original != nullptr);
+
+            for(size_t bufStr = 0; bufStr < curStr; bufStr++) {
+                original[bufStr] = buffOriginal[bufStr];
+
+                free(buffOriginal[bufStr] = nullptr);
+            }
+            free(buffOriginal);
+        }
+    }
+    buffAmount = curStr + 1;
     fputs(END_OF_PART, output);
 
     GnomeSort((void **)original, (int (*) (const void*, const void*))LetterCmp);
 
-    for (int curStr = 0; curStr < STR_AMOUNT; curStr++) {
-        fputs(original[curStr], output);
-
-        StrReverse(&original[curStr]);
-    }
-
+    curStr = 0;
+    while(fputs(original[curStr++], output) != EOF);
     fputs(END_OF_PART, output);
 
-    GnomeSort((void **)original, (int (*) (const void*, const void*))LetterCmp);
+    GnomeSort((void **)original, (int (*) (const void*, const void*))InversedLetterCmp);
 
-    for (int curStr = 0; curStr < STR_AMOUNT; curStr++) {
-        StrReverse(&original[curStr]);
-        fputs(original[curStr], output);
-
-        free(original[curStr]);
-        original[curStr] = nullptr;
+    curStr = 0;
+    while(fputs(original[curStr], output) != EOF) {
+        free(original[curStr++] = nullptr);
     }
-
     fputs(END_OF_PART, output);
 
-    free(original);
-    original = nullptr;
+    free(original = nullptr);
 
-    fclose(input);
-    fclose(output);
+    fclose(input = nullptr);
+    fclose(output = nullptr);
 }
 
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//! Writes current string of stream file in string variable
+//!
+//! @param [out] linePtr Pointer to the pointer where string will be written
+//! @param [out] memSize Pointer to the variable where beginning value of strlen is stored
+//! @param [in] stream Pointer to the stream where from string will be read
+//!
+//! @return Returns amount of written symbols or -1 if EOF
+//!
+//! @note Function uses dynamic memory and can increase it.
+//-------------------------------------------------------------------------------------------------------
+
+int GetLine(char **linePtr, size_t *memSize, FILE *stream) {
+    assert(linePtr != nullptr);
+    assert(memSize != nullptr);
+    assert(stream != nullptr);
+
+    int curChar = 0;
+
+    if ((curChar = fgetc(stream)) == EOF) {
+        return -1;
+    }
+
+    char *buffPtr = *linePtr;
+    char *ptr = buffPtr;
+
+    size_t buffMemSize = *memSize;
+    size_t diffPtr = 0;
+
+    while(curChar != EOF) {
+        if ((diffPtr = ptr - buffPtr) > (buffMemSize - 1)) {
+            buffMemSize += STR_LEN;
+
+            buffPtr = (char*)calloc(buffMemSize, sizeof(char));
+            assert(buffPtr != nullptr);
+
+            ptr = buffPtr + diffPtr;
+
+            if (buffPtr == nullptr) {
+                return -1;
+            }
+        }
+        *ptr++ = (char)curChar;
+
+        if (curChar == '\n') {
+            break;
+        }
+        curChar = fgetc(stream);
+    }
+
+    *ptr++ = '\0';
+    *linePtr = buffPtr;
+    *memSize = buffMemSize;
+
+    return ptr - buffPtr - 1;
+}
+
+//-------------------------------------------------------------------------------------------------------
 //! Prints short manual for program
 //!
 //! @param [in] argc amount of program arguments
-//! @param [in] argv originalay of program arguments
+//! @param [in] argv array of program arguments
 //!
 //! @note Program always have 1 argument - its location
 //!       If program doesn't find help.txt it will print REALLY short manual
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 
 void PrintHelp(int argc, char *argv[]) {
     assert(isfinite(argc));
@@ -105,58 +175,13 @@ void PrintHelp(int argc, char *argv[]) {
     }
 }
 
-//----------------------------------------------------------------------------
-//! Counts length of string
-//!
-//! @param [in] str String which will be counted
-//!
-//! @return Length of string
-//!
-//! @note Program returns length of string withount zero symbol.
-//----------------------------------------------------------------------------
-
-size_t StrLen(const char *str) {
-    assert(str != nullptr);
-
-    size_t len = 0;
-
-    while (str[len++] != '\0') {
-		;
-	}
-
-    return len - 1;
-}
-
-//----------------------------------------------------------------------------
-//! Reverses string
-//!
-//! @param [in] str Pointer to the string which will be reversed
-//----------------------------------------------------------------------------
-
-void StrReverse(char **str) {
-	assert(str != nullptr);
-
-    int strLen = StrLen(*str);
-
-	char temp[STR_LEN] = "";
-	strcpy(temp, *str);
-
-	*str = (char*)calloc(STR_LEN, sizeof(char));
-
-	for (int iter = 0; iter < strLen; iter++) {
-		*(*str + iter) = *(temp + strLen - 1 - iter);
-	}
-
-
-}
-
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 //! Checks if symbol is cyrillic
 //!
 //! @param [in] sym Symbol which will be checked
 //!
 //! @return True if cyrillic, false in other cases
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 
 bool IsCyrillic(const char sym) {
     assert(isfinite(sym));
@@ -164,8 +189,8 @@ bool IsCyrillic(const char sym) {
     return (sym >= 'À' && sym <= 'ÿ');
 }
 
-//----------------------------------------------------------------------------
-//! Compares letters of Russian and English alphabet of str1 and str2
+//-------------------------------------------------------------------------------------------------------
+//! Compares letters of Russian and English alphabet of str1 and str2 from the end of each string
 //!
 //! @param [in] str1 First string which will be compared
 //! @param [in] str2 Second string which will be compared
@@ -174,8 +199,45 @@ bool IsCyrillic(const char sym) {
 //!         first different characters (can be >0 or <0)
 //!
 //! @note Keep in mind that this function skips all non-letter symbols/
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 
+int InversedLetterCmp(const char *str1, const char *str2) {
+    assert(str1 != nullptr);
+    assert(str2 != nullptr);
+
+    assert(str1 != str2);
+
+    int idx1 = strlen(str1) - 1, idx2 = strlen(str2) - 1;
+
+	while (idx1 != -1 && idx2 != -1) {
+		while (!(IsCyrillic(str1[idx1]) || isalpha(str1[idx1]))) {
+			idx1--;
+		}
+		while (!(IsCyrillic(str2[idx2]) || isalpha(str2[idx2]))) {
+			idx2--;
+		}
+
+		if (str1[idx1] != str2[idx2]) {
+			return str1[idx1] - str2[idx2];
+		}
+		idx1--;
+		idx2--;
+	}
+
+    return 0;
+}
+
+//-------------------------------------------------------------------------------------------------------
+//! Compares letters of Russian and English alphabet of str1 and str2 from the beginning of each string
+//!
+//! @param [in] str1 First string which will be compared
+//! @param [in] str2 Second string which will be compared
+//!
+//! @return Returns 0 if strings are equal, otherwise returns distance between
+//!         first different characters (can be >0 or <0)
+//!
+//! @note Keep in mind that this function skips all non-letter symbols/
+//-------------------------------------------------------------------------------------------------------
 
 int LetterCmp(const char *str1, const char *str2) {
     assert(str1 != nullptr);
@@ -198,17 +260,18 @@ int LetterCmp(const char *str1, const char *str2) {
 		idx1++;
 		idx2++;
 	}
+
     return 0;
 }
 
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 //! Swaps two pointers
 //!
 //! @param [in] ptr1 Pointer to the first pointer
 //! @param [in] ptr2 Pointer to the second pointer
 //!
 //! @note You can swap strings by this function
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 
 void SwapPtr(void **ptr1, void **ptr2) {
     assert(ptr1 != nullptr);
@@ -221,23 +284,23 @@ void SwapPtr(void **ptr1, void **ptr2) {
     *ptr2 = temp;
 }
 
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 //! Sorts originalay of strings in lexicographic order.
 //!
 //! @param [in] original pointer to the pointer of originalay which is being sorted
 //! @param [in] FuncComp pointer to the function which will sort original
 //!
 //! @note Complexity of algorithm is O(n^2)
-//----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 
 void GnomeSort(void **original, int (*FuncComp)(const void*, const void*)) {
     assert(original != nullptr);
 	assert(FuncComp != nullptr);
 
-    int curStr = 0;
+    size_t curStr = 0;
 
-    while (curStr < STR_AMOUNT) {
-        if (curStr == 0 || (*FuncComp)(*(original + curStr), *(original + curStr - 1)) >= 0) {
+    while (curStr < buffAmount) {
+        if (curStr == 0 || (*FuncComp)(original[curStr], original[curStr - 1]) >= 0) {
             curStr++;
         }
         else {
