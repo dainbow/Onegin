@@ -1,142 +1,134 @@
 #include <stdio.h>
+#include <io.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <locale.h>
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
+#include <fcntl.h>
+#include <windows.h>
+
 
 const size_t STR_LEN = 200;
 const size_t STR_AMOUNT = 400;
 
-const char END_OF_PART[] = "------------------END OF PART------------------\n";
+const char END_OF_PART[] = "------------------------------------------------------\n";
 const char INPUT_FILE[] = "Onegin.txt";
 const char OUTPUT_FILE[] = "output.txt";
+const unsigned char BIG_A = 'À';
+const unsigned char LIL_YA = 'ÿ';
 
-size_t buffLen = STR_LEN;
-size_t buffAmount = STR_AMOUNT;
+bool flag = 0;
 
-bool IsCyrillic(const char sym);
-int LetterCmp(const char *str1, const char *str2);
+size_t strCount = 0;
+
+bool IsCyrillic(const unsigned int sym);
+int LetterCmp(const unsigned char *str1, const unsigned char *str2);
 void SwapPtr(void **str1, void **str2);
-void GnomeSort(void **original, int (*FuncComp)(const void*, const void*));
+void MyQsort (unsigned char **arr, int arrBegin, int arrEnd, int (*comparator) (const void*, const void*));
 void PrintHelp(int argc, char *argv[]);
-int InversedLetterCmp(const char *str1, const char *str2);
-int GetLine(char **lineptr, size_t *n, FILE *stream);
+int InversedLetterCmp(const unsigned char *str1, const unsigned char *str2);
+int MyPuts(const unsigned char *str);
+int MyFPuts(const unsigned char *str, FILE *stream);
+size_t MyStrLen(const unsigned char *str);
 
 int main(int argc, char *argv[]) {
+    SetConsoleCP(1251);
+    SetConsoleOutputCP(1251);
+
     PrintHelp(argc, argv);
 
-    FILE *input = fopen(INPUT_FILE, "r");
-    assert(input != nullptr);
+    int input = open(INPUT_FILE, O_RDONLY, 0);
+    assert(input != -1);
+
+    long fileSize = _filelength(input);
+    unsigned char *buf = (unsigned char*)calloc(fileSize, sizeof(buf[0]));
+
+    read(input, buf, fileSize);
+
+    for (int curCh = 1; curCh < fileSize; curCh++) {
+        if (buf[curCh] == '\n') {
+            strCount++;
+        }
+    }
+    printf("%d %d\n", strCount, fileSize);
+
+    unsigned char **idxArr = (unsigned char**)calloc(strCount, sizeof(idxArr[0]));
+
+    for (int curStrBuf = 0, curStrIdx = 0; curStrBuf < fileSize; curStrBuf++) {
+        if (curStrBuf == 0 || buf[curStrBuf-1] == '\n') {
+            idxArr[curStrIdx] = &buf[curStrBuf];
+            curStrIdx++;
+        }
+    }
+
+    MyQsort(idxArr, 4, strCount, (int (*) (const void*, const void*))LetterCmp);
 
     FILE *output = fopen(OUTPUT_FILE, "w");
-    assert(output != nullptr);
 
-    char **original = (char**)calloc(buffAmount, sizeof(char*));
-    assert(original != nullptr);
-
-    size_t curStr = 0;
-
-    while((original[curStr] = (char*)calloc(buffLen, sizeof(char))) != nullptr) {
-        if (GetLine(&original[curStr], &buffLen, input) == -1) {
-            break;
-        }
-
-        fputs(original[curStr], output);
-
-        if (++curStr == buffAmount) {
-            char **buffOriginal = original;
-            buffAmount += STR_LEN;
-
-            original = (char**)calloc(buffAmount, sizeof(char*));
-            assert(original != nullptr);
-
-            for(size_t bufStr = 0; bufStr < curStr; bufStr++) {
-                original[bufStr] = buffOriginal[bufStr];
-                free(buffOriginal[bufStr] = nullptr);
-            }
-            free(buffOriginal);
-        }
+    for (size_t curStr = 0; curStr < strCount; curStr++) {
+        MyFPuts(idxArr[curStr], output);
     }
-    buffAmount = curStr + 1;
-    fputs(END_OF_PART, output);
+    fprintf(output, "%s\n", END_OF_PART);
 
-    GnomeSort((void **)original, (int (*) (const void*, const void*))LetterCmp);
 
-    curStr = 0;
-    while(fputs(original[curStr++], output) != EOF);
-    fputs(END_OF_PART, output);
+    MyQsort(idxArr, 4, strCount, (int (*) (const void*, const void*))InversedLetterCmp);
 
-    GnomeSort((void **)original, (int (*) (const void*, const void*))InversedLetterCmp);
-
-    curStr = 0;
-    while(fputs(original[curStr], output) != EOF) {
-        free(original[curStr++] = nullptr);
+    for (size_t curStr = 0; curStr < strCount; curStr++) {
+        MyFPuts(idxArr[curStr], output);
     }
-    fputs(END_OF_PART, output);
+    fprintf(output, "%s\n", END_OF_PART);
 
-    free(original = nullptr);
+    fprintf(output, "%s\n", buf);
 
-    fclose(input = nullptr);
-    fclose(output = nullptr);
+    free(buf);
+    free(idxArr);
+    close(input);
 }
 
-//-------------------------------------------------------------------------------------------------------
-//! Writes current string of stream file in string variable
-//!
-//! @param [out] linePtr Pointer to the pointer where string will be written
-//! @param [out] memSize Pointer to the variable where beginning value of strlen is stored
-//! @param [in] stream Pointer to the stream where from string will be read
-//!
-//! @return Returns amount of written symbols or -1 if EOF
-//!
-//! @note Function uses dynamic memory and can increase it.
-//-------------------------------------------------------------------------------------------------------
+size_t MyStrLen(const unsigned char *str) {
+    assert(str != nullptr);
 
-int GetLine(char **linePtr, size_t *memSize, FILE *stream) {
-    assert(linePtr != nullptr);
-    assert(memSize != nullptr);
+    size_t len = 0;
+
+    while (str[len++] != '\n' && str[len] != '\0' && str[len] != EOF);
+
+    return len - 1;
+}
+
+int MyFPuts(const unsigned char *str, FILE *stream) {
+    assert(str != nullptr);
     assert(stream != nullptr);
 
-    int curChar = 0;
+    int i = 0;
+    while (str[i] != '\0' && str[i] != '\n' && str[i] != EOF) {
+        fputc(str[i], stream);
+        i++;
+    }
+    fputc('\n', stream);
 
-    if ((curChar = fgetc(stream)) == EOF) {
-        return -1;
+    if (str[i] == '\0' || str[i] == '\n') {
+        return 1;
     }
 
-    char *buffPtr = *linePtr;
-    char *ptr = buffPtr;
+    return EOF;
+}
 
-    size_t buffMemSize = *memSize;
-    size_t diffPtr = 0;
+int MyPuts(const unsigned char *str) {
+    assert(str != nullptr);
 
-    while(curChar != EOF) {
-        if ((diffPtr = ptr - buffPtr) > (buffMemSize - 1)) {
-            buffMemSize += STR_LEN;
+    int i = 0;
+    while (str[i] != '\0' && str[i] != '\n' && str[i] != EOF) {
+        printf("%c", str[i++]);
+    }
+    printf("\n");
 
-            buffPtr = (char*)calloc(buffMemSize, sizeof(char));
-            assert(buffPtr != nullptr);
-
-            ptr = buffPtr + diffPtr;
-
-            if (buffPtr == nullptr) {
-                return -1;
-            }
-        }
-        *ptr++ = (char)curChar;
-
-        if (curChar == '\n') {
-            break;
-        }
-        curChar = fgetc(stream);
+    if (str[i] == '\0' || str[i] == '\n') {
+        return 1;
     }
 
-    *ptr++ = '\0';
-    *linePtr = buffPtr;
-    *memSize = buffMemSize;
-
-    return ptr - buffPtr - 1;
+    return EOF;
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -181,10 +173,10 @@ void PrintHelp(int argc, char *argv[]) {
 //! @return True if cyrillic, false in other cases
 //-------------------------------------------------------------------------------------------------------
 
-bool IsCyrillic(const char sym) {
+bool IsCyrillic(const unsigned int sym) {
     assert(isfinite(sym));
 
-    return (sym >= 'À' && sym <= 'ÿ');
+    return (sym >= BIG_A && sym <= LIL_YA);
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -199,13 +191,15 @@ bool IsCyrillic(const char sym) {
 //! @note Keep in mind that this function skips all non-letter symbols/
 //-------------------------------------------------------------------------------------------------------
 
-int InversedLetterCmp(const char *str1, const char *str2) {
+int InversedLetterCmp(const unsigned char *str1, const unsigned char *str2) {
     assert(str1 != nullptr);
     assert(str2 != nullptr);
 
-    assert(str1 != str2);
+    if(str1 == str2){
+        return 0;
+    }
 
-    int idx1 = strlen(str1) - 1, idx2 = strlen(str2) - 1;
+    int idx1 = MyStrLen(str1) - 1, idx2 = MyStrLen(str2) - 1;
 
 	while (idx1 != -1 && idx2 != -1) {
 		while (!(IsCyrillic(str1[idx1]) || isalpha(str1[idx1]))) {
@@ -237,15 +231,17 @@ int InversedLetterCmp(const char *str1, const char *str2) {
 //! @note Keep in mind that this function skips all non-letter symbols/
 //-------------------------------------------------------------------------------------------------------
 
-int LetterCmp(const char *str1, const char *str2) {
+int LetterCmp(const unsigned char *str1, const unsigned char *str2) {
     assert(str1 != nullptr);
     assert(str2 != nullptr);
 
-    assert(str1 != str2);
+    if (str1 == str2) {
+        return 0;
+    }
 
     int idx1 = 0, idx2 = 0;
 
-	while (str1[idx1] != '\0' && str2[idx2]  != '\0') {
+	while (str1[idx1] != '\0' && str2[idx2] != '\0' && str1[idx1] != '\n' && str2[idx2]  != '\n') {
 		while (!(IsCyrillic(str1[idx1]) || isalpha(str1[idx1]))) {
 			idx1++;
 		}
@@ -275,11 +271,12 @@ void SwapPtr(void **ptr1, void **ptr2) {
     assert(ptr1 != nullptr);
     assert(ptr2 != nullptr);
 
-    assert(ptr1 != ptr2);
 
-    void *temp = *ptr1;
-    *ptr1 = *ptr2;
-    *ptr2 = temp;
+    if (ptr1 != ptr2) {
+        void *temp = *ptr1;
+        *ptr1 = *ptr2;
+        *ptr2 = temp;
+    }
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -291,19 +288,35 @@ void SwapPtr(void **ptr1, void **ptr2) {
 //! @note Complexity of algorithm is O(n^2)
 //-------------------------------------------------------------------------------------------------------
 
-void GnomeSort(void **original, int (*FuncComp)(const void*, const void*)) {
-    assert(original != nullptr);
-	assert(FuncComp != nullptr);
+void MyQsort (unsigned char **arr, int memory, int size, int (*comparator) (const void*, const void*)) {
+    assert(arr != nullptr);
 
-    size_t curStr = 0;
+    assert(isfinite(memory));
+    assert(isfinite(size));
+    assert(comparator!= nullptr);
 
-    while (curStr < buffAmount) {
-        if (curStr == 0 || (*FuncComp)(original[curStr], original[curStr - 1]) >= 0) {
-            curStr++;
+    int left = 0;
+    int right = size - 1;
+    int mid = size/2;
+
+    do {
+        while(comparator(arr[left], arr[mid]) < 0) {
+            left++;
         }
-        else {
-            SwapPtr(original + curStr, original + curStr - 1);
-            curStr--;
+        while(comparator(arr[right], arr[mid]) > 0) {
+            right--;
         }
+
+        if (left <= right) {
+            SwapPtr((void**)(arr + left++), (void**)(arr + right--));
+        }
+    } while (left <= right);
+
+    if (right > 0) {
+        MyQsort(arr, 4, right + 1, comparator);
+    }
+
+    if (left < size) {
+        MyQsort(&arr[left], 4, size - left, comparator);
     }
 }
