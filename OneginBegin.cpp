@@ -308,12 +308,14 @@ void SwapPtr(void *ptr1, void *ptr2, size_t size) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Sorts originalay of strings in lexicographic order.
+//! Sorts array using quicksort algorithm
 //!
-//! @param [in] original pointer to the pointer of originalay which is being sorted
-//! @param [in] FuncComp pointer to the function which will sort original
+//! @param [in] arr pointer to the array which is being sorted
+//! @param [in] memory size of each element of arr in bytes
+//! @param [in] size amount of array's elements
+//! @param [in] comparator Pointer to the function which will compare elements
 //!
-//! @note Complexity of algorithm is O(n^2)
+//! @note Average complexity of algorithm is O(n*(log n))
 //-------------------------------------------------------------------------------------------------------
 
 void MyQsort (void *arr, int memory, long int size, int (*comparator) (const void*, const void*)) {

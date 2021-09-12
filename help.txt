@@ -1,8 +1,9 @@
 This program can sort strings of famous "Eugene Onegin" by A. Pushkin.
-1. It writes in output.txt original poem.
-2. Then, it sorts all strings in lexicographic order from the beginning skipping all punctiation marks and spaces.
+
+1. It sorts all strings in lexicographic order from the beginning skipping all punctiation marks and spaces.
 For example: "AB><>! and AC is sorted in lexicographic order
-3. Finally, it sorts all strings in lexicographic order frome the end skipping all punctuation marks and spaces/
+2. Then, it sorts all strings in lexicographic order frome the end skipping all punctuation marks and spaces/
+3. Finally, It writes in output.txt original poem.
 For example: "<>AB<"""AAA and "<>!@<>$$>@<!<!AAB is sorted in lexicographic order.
-P.S. Each part of output.txt is diveded by "----------END OF PART------------"
+P.S. Each part of output.txt is diveded by "--------------------------------"
   
