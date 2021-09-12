@@ -2,7 +2,6 @@
 #include <io.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <locale.h>
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
