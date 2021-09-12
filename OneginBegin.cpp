@@ -9,26 +9,23 @@
 #include <fcntl.h>
 #include <windows.h>
 
-
-const size_t STR_LEN = 200;
-const size_t STR_AMOUNT = 400;
-
 const char END_OF_PART[] = "------------------------------------------------------\n";
 const char INPUT_FILE[] = "Onegin.txt";
 const char OUTPUT_FILE[] = "output.txt";
+const char HELP_FILE[] = "help.txt";
+
 const unsigned char BIG_A = 'À';
 const unsigned char LIL_YA = 'ÿ';
 
-bool flag = 0;
-
-size_t strCount = 0;
-
 bool IsCyrillic(const unsigned int sym);
-int LetterCmp(const unsigned char *str1, const unsigned char *str2);
 void SwapPtr(void **str1, void **str2);
-void MyQsort (unsigned char **arr, int arrBegin, int arrEnd, int (*comparator) (const void*, const void*));
+
+void MyQsort(unsigned char **arr, int memory, long int size, int (*comparator) (const void*, const void*));
 void PrintHelp(int argc, char *argv[]);
+
+int LetterCmp(const unsigned char *str1, const unsigned char *str2);
 int InversedLetterCmp(const unsigned char *str1, const unsigned char *str2);
+
 int MyPuts(const unsigned char *str);
 int MyFPuts(const unsigned char *str, FILE *stream);
 size_t MyStrLen(const unsigned char *str);
@@ -44,15 +41,16 @@ int main(int argc, char *argv[]) {
 
     long fileSize = _filelength(input);
     unsigned char *buf = (unsigned char*)calloc(fileSize, sizeof(buf[0]));
-
     read(input, buf, fileSize);
+
+    size_t strCount = 0;
 
     for (int curCh = 1; curCh < fileSize; curCh++) {
         if (buf[curCh] == '\n') {
             strCount++;
         }
     }
-    printf("%d %d\n", strCount, fileSize);
+    printf("%d %ld\n", strCount, fileSize);
 
     unsigned char **idxArr = (unsigned char**)calloc(strCount, sizeof(idxArr[0]));
 
@@ -80,7 +78,7 @@ int main(int argc, char *argv[]) {
     }
     fprintf(output, "%s\n", END_OF_PART);
 
-    fprintf(output, "%s\n", buf);
+    fputs((const char*)buf, output);
 
     free(buf);
     free(idxArr);
@@ -147,18 +145,17 @@ void PrintHelp(int argc, char *argv[]) {
 
     for (int argIdx = 1; argIdx < argc; argIdx++) {
         if (strcmp(argv[argIdx], "/?") == 0) {
-            FILE *help = fopen("help.txt", "r");
+            FILE* help = fopen(HELP_FILE, "r");
 
             if (help == nullptr) {
-                printf("help.txt not found. REALLY short description: this program writes in output.txt\n1. Original \"Eugene Onegin\"\n2. Sorted strings of it from the beginning\n3. Sorted strings of it from the end");
+                printf("%s not found. REALLY short description: this program writes in output.txt\n1. Original \"Eugene Onegin\"\n2. Sorted strings of it from the beginning\n3. Sorted strings of it from the end", HELP_FILE);
             }
             else {
-                char strOutput[STR_LEN] = "";
+                int chr = 0;
 
-                while(fgets(strOutput, STR_LEN, help) != 0) {
-                    puts(strOutput);
+                while ((chr = fgetc(help)) != EOF) {
+                    fputc(chr, stdout);
                 }
-
                 fclose(help);
             }
         }
@@ -201,15 +198,15 @@ int InversedLetterCmp(const unsigned char *str1, const unsigned char *str2) {
 
     int idx1 = MyStrLen(str1) - 1, idx2 = MyStrLen(str2) - 1;
 
-	while (idx1 != -1 && idx2 != -1) {
-		while (!(IsCyrillic(str1[idx1]) || isalpha(str1[idx1]))) {
+	while (idx1 > -1 && idx2 > -1) {
+		while (!(IsCyrillic(str1[idx1]) || isalpha(str1[idx1])) && idx1 > -1) {
 			idx1--;
 		}
-		while (!(IsCyrillic(str2[idx2]) || isalpha(str2[idx2]))) {
+		while (!(IsCyrillic(str2[idx2]) || isalpha(str2[idx2])) && idx2 > -1) {
 			idx2--;
 		}
 
-		if (str1[idx1] != str2[idx2]) {
+		if (str1[idx1] != str2[idx2] && idx1 > -1 && idx2 > -1) {
 			return str1[idx1] - str2[idx2];
 		}
 		idx1--;
@@ -240,15 +237,17 @@ int LetterCmp(const unsigned char *str1, const unsigned char *str2) {
     }
 
     int idx1 = 0, idx2 = 0;
+    int len1 = MyStrLen(str1), len2 = MyStrLen(str2);
 
-	while (str1[idx1] != '\0' && str2[idx2] != '\0' && str1[idx1] != '\n' && str2[idx2]  != '\n') {
-		while (!(IsCyrillic(str1[idx1]) || isalpha(str1[idx1]))) {
+	while (idx1 < len1 && idx2 < len2) {
+		while (!(IsCyrillic(str1[idx1]) || isalpha(str1[idx1])) && idx1 < len1) {
 			idx1++;
 		}
-		while (!(IsCyrillic(str2[idx2]) || isalpha(str2[idx2]))) {
+		while (!(IsCyrillic(str2[idx2]) || isalpha(str2[idx2])) && idx2 < len2) {
 			idx2++;
 		}
-		if (str1[idx1] != str2[idx2]) {
+
+		if (str1[idx1] != str2[idx2] && idx1 < len1 && idx2 < len2) {
 			return str1[idx1] - str2[idx2];
 		}
 		idx1++;
@@ -271,7 +270,6 @@ void SwapPtr(void **ptr1, void **ptr2) {
     assert(ptr1 != nullptr);
     assert(ptr2 != nullptr);
 
-
     if (ptr1 != ptr2) {
         void *temp = *ptr1;
         *ptr1 = *ptr2;
@@ -288,16 +286,16 @@ void SwapPtr(void **ptr1, void **ptr2) {
 //! @note Complexity of algorithm is O(n^2)
 //-------------------------------------------------------------------------------------------------------
 
-void MyQsort (unsigned char **arr, int memory, int size, int (*comparator) (const void*, const void*)) {
+void MyQsort (unsigned char **arr, int memory, long int size, int (*comparator) (const void*, const void*)) {
     assert(arr != nullptr);
+    assert(comparator!= nullptr);
 
     assert(isfinite(memory));
     assert(isfinite(size));
-    assert(comparator!= nullptr);
 
-    int left = 0;
-    int right = size - 1;
-    int mid = size/2;
+    long int left = 0;
+    long int right = size - 1;
+    long int mid = size / 2;
 
     do {
         while(comparator(arr[left], arr[mid]) < 0) {
@@ -308,7 +306,10 @@ void MyQsort (unsigned char **arr, int memory, int size, int (*comparator) (cons
         }
 
         if (left <= right) {
-            SwapPtr((void**)(arr + left++), (void**)(arr + right--));
+            SwapPtr((void**)(arr + left), (void**)(arr + right));
+
+            left++;
+            right--;
         }
     } while (left <= right);
 
