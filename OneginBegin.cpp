@@ -6,39 +6,47 @@
 #include <math.h>
 #include <string.h>
 #include <fcntl.h>
-#include <windows.h>
 #include <sys\stat.h>
+#include <stdint.h>
 
 const char END_OF_PART[] = "------------------------------------------------------\n";
 const char INPUT_FILE[] = "Onegin.txt";
 const char OUTPUT_FILE[] = "output.txt";
 const char HELP_FILE[] = "help.txt";
 
-const unsigned char UPPERCASE_A = 'À';
-const unsigned char LOWERCASE_YA = 'ÿ';
+typedef unsigned char uchar;
 
-bool IsCyrillic(const unsigned int sym);
+const uchar UPPERCASE_A = 'À';
+const uchar LOWERCASE_YA = 'ÿ';
+
+bool IsCyrillic(const uint16_t sym);
 void SwapPtr(void *str1, void *str2, size_t size);
 
-size_t CountStr(unsigned char* buf, size_t fileSize);
-void FillIdxArr(unsigned char** idxArr, unsigned char* buf, size_t fileSize);
+void CountStr(struct text*);
+void FillIdxArr(struct text*);
 
-void MyQsort(void *arr, int memory, long int size, int (*comparator) (const void*, const void*));
+void MyQsort(void *arr, size_t number, size_t size, int (*comparator) (const void*, const void*));
 
 void PrintHelp(int argc, char *argv[]);
-void PrintIdxArr(unsigned char** IdxArr, size_t strCount, FILE* output);
+void WriteIdxArr(struct text*, FILE* output);
+int MyFPuts(const uchar *str, FILE *stream);
 
-int LetterCmp(const unsigned char **str1, const unsigned char **str2);
-int InversedLetterCmp(const unsigned char **str1, const unsigned char **str2);
+int LetterStrCmp(struct strAndLen *str1, struct strAndLen *str2);
+int InversedLetterStrCmp(struct strAndLen *str1, struct strAndLen *str2);
 
-int MyPuts(const unsigned char *str);
-int MyFPuts(const unsigned char *str, FILE *stream);
-size_t MyStrLen(const unsigned char *str);
+struct strAndLen {
+    uchar *ptr;
+    size_t ptrLen;
+};
+
+struct text {
+    struct strAndLen *idxArr;
+    uchar *buffer;
+    size_t bufSize;
+    size_t strAmount;
+};
 
 int main(int argc, char *argv[]) {
-    SetConsoleCP(1251);
-    SetConsoleOutputCP(1251);
-
     PrintHelp(argc, argv);
 
     int input = open(INPUT_FILE, O_RDONLY, 0);
@@ -46,33 +54,35 @@ int main(int argc, char *argv[]) {
 
     struct stat inputStat;
     fstat(input, &inputStat);
-    size_t fileSize = inputStat.st_size;
 
-    unsigned char *buf = (unsigned char*)calloc(fileSize, sizeof(buf[0]));
-    assert(buf != nullptr);
+    struct text onegin;
+    onegin.bufSize = inputStat.st_size;
 
-    read(input, buf, fileSize);
-    size_t strCount = CountStr(buf, fileSize);
+    onegin.buffer = (uchar*)calloc(onegin.bufSize + 1, sizeof(onegin.buffer[0]));
+    assert(onegin.buffer != nullptr);
 
-    unsigned char **idxArr = (unsigned char**)calloc(strCount, sizeof(idxArr[0]));
-    assert(idxArr != nullptr);
+    read(input, onegin.buffer, onegin.bufSize);
+    CountStr(&onegin);
 
-    FillIdxArr(idxArr, buf, fileSize);
-    MyQsort(idxArr, sizeof(idxArr[0]), strCount, (int (*) (const void*, const void*))LetterCmp);
+    onegin.idxArr = (struct strAndLen*)calloc(onegin.strAmount, sizeof(onegin.idxArr[0]));
+    assert(onegin.idxArr != nullptr);
+
+    FillIdxArr(&onegin);
+    qsort(onegin.idxArr, onegin.strAmount, sizeof(onegin.idxArr[0]), (int (*) (const void*, const void*))LetterStrCmp);
 
     FILE *output = fopen(OUTPUT_FILE, "w");
-    PrintIdxArr(idxArr, strCount, output);
+    WriteIdxArr(&onegin, output);
 
-    MyQsort(idxArr, sizeof(idxArr[0]), strCount, (int (*) (const void*, const void*))InversedLetterCmp);
+    MyQsort(onegin.idxArr, onegin.strAmount, sizeof(onegin.idxArr[0]), (int (*) (const void*, const void*))InversedLetterStrCmp);
 
-    PrintIdxArr(idxArr, strCount, output);
-    fputs((const char*)buf, output);
+    WriteIdxArr(&onegin, output);
+    fputs((const char*)onegin.buffer, output);
 
     close(input);
     fclose(output);
 
-    free(buf);
-    free(idxArr);
+    free(onegin.buffer);
+    free(onegin.idxArr);
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -83,7 +93,7 @@ int main(int argc, char *argv[]) {
 //! @return True if cyrillic, false in other cases
 //-------------------------------------------------------------------------------------------------------
 
-bool IsCyrillic(const unsigned int sym) {
+bool IsCyrillic(const uint16_t sym) {
     assert(isfinite(sym));
 
     return (sym >= UPPERCASE_A && sym <= LOWERCASE_YA);
@@ -94,6 +104,7 @@ bool IsCyrillic(const unsigned int sym) {
 //!
 //! @param [in] ptr1 Pointer to the first pointer
 //! @param [in] ptr2 Pointer to the second pointer
+//! @param [in] size Size in bytes of swapping variables
 //!
 //! @note You can swap strings by this function
 //-------------------------------------------------------------------------------------------------------
@@ -103,57 +114,66 @@ void SwapPtr(void *ptr1, void *ptr2, size_t size) {
     assert(ptr2 != nullptr);
 
     if (ptr1 != ptr2) {
-        unsigned char *first = (unsigned char *)ptr1, *second = (unsigned char *)ptr2, tmp;
-        for (size_t curByte = 0; curByte < size; curByte++) {
-            tmp = first[curByte];
-            first[curByte] = second[curByte];
-            second[curByte] = tmp;
+        uint64_t *firstBig = (uint64_t *)ptr1, *secondBig = (uint64_t *)ptr2, tmpBig;
+        size_t curByte = 0;
+
+        for (; size / sizeof(uint64_t); size -= sizeof(uint64_t), curByte++) {
+            tmpBig = firstBig[curByte];
+            firstBig[curByte] = secondBig[curByte];
+            secondBig[curByte] = tmpBig;
+        }
+
+        unsigned char *firstLittle = (unsigned char *)((char*)ptr1 + curByte * sizeof(uint64_t)), *secondLittle = (unsigned char *)((char*)ptr2 + curByte * sizeof(uint64_t)), tmpLittle;
+        for (; size; size--, curByte++) {
+            tmpLittle = firstLittle[curByte];
+            firstLittle[curByte] = secondLittle[curByte];
+            secondLittle[curByte] = tmpLittle;
         }
     }
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Counts strings in buffer
+//! Counts strings in structure's buffer and set structure's strAmount.
 //!
-//! @param [in] buf Pointer to the beginning of buffer
-//! @param [in] fileSize Size of buffer
-//!
-//! @return Amount of strings in buffer
+//! @param [in] text Pointer to the text structure
 //-------------------------------------------------------------------------------------------------------
 
-size_t CountStr(unsigned char* buf, size_t fileSize) {
+void CountStr(struct text *text) {
     size_t strCount = 0;
 
-    for (size_t curChr = 0; curChr < fileSize; curChr++) {
-        if (buf[curChr] == '\n') {
+    for (size_t curChr = 0; curChr < (text->bufSize); curChr++) {
+        if (text->buffer[curChr] == '\n') {
             strCount++;
         }
 
-        if (buf[curChr] == '\r') {
-            buf[curChr] = '\0';
+        if (text->buffer[curChr] == '\r') {
+            text->buffer[curChr] = '\0';
         }
     }
 
-    return strCount;
+    text->strAmount = strCount;
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Fills array of pointers with pointers on the beginning of each string of buffer
+//! Fills idxArr of the text structure with pointers on the beginning of each string and count length
+//! of each string.
 //!
-//! @param [in] idxArr Pointer to the pointer to the beginning of array of pointers
-//! @param [in] buf Pointer to the beginning of buffer array
-//! @param [in] fileSize Size of buffer
+//! @param [in] text Pointer to the text structure
 //!
-//! @note You must allocate memory to idxArr before using this function
+//! @note You must allocate memory to idxArr (strAndLen structure) before using this function
 //-------------------------------------------------------------------------------------------------------
 
-void FillIdxArr(unsigned char** idxArr, unsigned char* buf, size_t fileSize) {
-    for (size_t curStrBuf = 0, curStrIdx = 0; curStrBuf < fileSize; curStrBuf++) {
-        if (curStrBuf == 0 || buf[curStrBuf-1] == '\n') {
-            idxArr[curStrIdx] = &buf[curStrBuf];
+void FillIdxArr(struct text *text) {
+    text->idxArr[0].ptr = &text->buffer[0];
+
+    for (size_t curStrBuf = 0, curStrIdx = 1; curStrBuf < text->bufSize; curStrBuf++) {
+        if (text->buffer[curStrBuf - 1] == '\n') {
+            text->idxArr[curStrIdx].ptr = &text->buffer[curStrBuf];
+            text->idxArr[curStrIdx - 1].ptrLen = text->idxArr[curStrIdx].ptr - text->idxArr[curStrIdx - 1].ptr - 1;
             curStrIdx++;
         }
     }
+    text->idxArr[text->strAmount - 1].ptrLen = &text->buffer[text->bufSize] - text->idxArr[text->strAmount - 1].ptr - 1;
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -167,27 +187,27 @@ void FillIdxArr(unsigned char** idxArr, unsigned char* buf, size_t fileSize) {
 //! @note Average complexity of algorithm is O(n*(log n))
 //-------------------------------------------------------------------------------------------------------
 
-void MyQsort (void *arr, int memory, long int size, int (*comparator) (const void*, const void*)) {
+void MyQsort (void *arr, size_t number, size_t size, int (*comparator) (const void*, const void*)) {
     assert(arr != nullptr);
     assert(comparator!= nullptr);
 
-    assert(isfinite(memory));
+    assert(isfinite(number));
     assert(isfinite(size));
 
     long int left = 0;
-    long int right = size - 1;
-    char* mid =*((char**)(arr + (size / 2)*memory));
+    long int right = number - 1;
+    char* mid =*((char**)((char*)arr + (number / 2) * size));
 
     do {
-        while(comparator(arr + left * memory, &mid) < 0) {
+        while(comparator((char*)arr + left * size, &mid) < 0) {
             left++;
         }
-        while(comparator(arr + right * memory, &mid) > 0) {
+        while(comparator((char*)arr + right * size, &mid) > 0) {
             right--;
         }
 
         if (left <= right) {
-            SwapPtr(arr + left * memory, arr + right * memory, memory);
+            SwapPtr((char*)arr + left * size, (char*)arr + right * size, size);
 
             left++;
             right--;
@@ -195,11 +215,11 @@ void MyQsort (void *arr, int memory, long int size, int (*comparator) (const voi
     } while (left <= right);
 
     if (right > 0) {
-        MyQsort(arr, memory, right + 1, comparator);
+        MyQsort(arr, right + 1, size, comparator);
     }
 
-    if (left < size) {
-        MyQsort(arr + left * memory, memory, size - left, comparator);
+    if (left < (long)number) {
+        MyQsort((char*)arr + left * size, number - left, size, comparator);
     }
 }
 
@@ -235,46 +255,53 @@ void PrintHelp(int argc, char *argv[]) {
     }
 }
 
-void PrintIdxArr(unsigned char** idxArr, size_t strCount, FILE* output) {
-    for (size_t curStr = 0; curStr < strCount; curStr++) {
-        MyFPuts(idxArr[curStr], output);
+//-------------------------------------------------------------------------------------------------------
+//! Writes each string of the structure text idxArr
+//!
+//! @param [in] text Pointer to the text structure
+//! @param [in] output Pointer to the output stream
+//-------------------------------------------------------------------------------------------------------
+
+void WriteIdxArr(struct text *text, FILE* output) {
+    for (size_t curStr = 0; curStr < text->strAmount; curStr++) {
+        MyFPuts(text->idxArr[curStr].ptr, output);
     }
     fprintf(output, "%s\n", END_OF_PART);
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Compares letters of Russian and English alphabet of str1 and str2 from the beginning of each string
+//! Compares letters of Russian and English alphabet of two strAndLen structures from the beginning
 //!
-//! @param [in] str1 First string which will be compared
-//! @param [in] str2 Second string which will be compared
+//! @param [in] str1 Pointer to the first sAL structure
+//! @param [in] str2 Pointer to the second sAl structure
 //!
 //! @return Returns 0 if strings are equal, otherwise returns distance between
 //!         first different characters (can be >0 or <0)
 //!
-//! @note Keep in mind that this function skips all non-letter symbols/
+//! @note Keep in mind that this function skips all non-letter symbols
 //-------------------------------------------------------------------------------------------------------
 
-int LetterCmp(const unsigned char **str1, const unsigned char **str2) {
+int LetterStrCmp(struct strAndLen* str1, struct strAndLen* str2) {
     assert(str1 != nullptr);
     assert(str2 != nullptr);
 
-    if (str1 == str2) {
+    if (str1->ptr == str2->ptr) {
         return 0;
     }
 
     int idx1 = 0, idx2 = 0;
-    int len1 = MyStrLen(*str1), len2 = MyStrLen(*str2);
+    int len1 = str1->ptrLen, len2 = str2->ptrLen;
 
 	while (idx1 < len1 && idx2 < len2) {
-		while (!(IsCyrillic((*str1)[idx1]) || isalpha((*str1)[idx1])) && idx1 < len1) {
+		while (!(IsCyrillic(str1->ptr[idx1]) || isalpha(str1->ptr[idx1])) && idx1 < len1) {
 			idx1++;
 		}
-		while (!(IsCyrillic((*str2)[idx2]) || isalpha((*str2)[idx2])) && idx2 < len2) {
+		while (!(IsCyrillic(str2->ptr[idx2]) || isalpha(str2->ptr[idx2])) && idx2 < len2) {
 			idx2++;
 		}
 
-		if ((*str1)[idx1] != (*str2)[idx2] && idx1 < len1 && idx2 < len2) {
-			return (*str1)[idx1] - (*str2)[idx2];
+		if (str1->ptr[idx1] != str2->ptr[idx2] && idx1 < len1 && idx2 < len2) {
+			return str1->ptr[idx1] - str2->ptr[idx2];
 		}
 		idx1++;
 		idx2++;
@@ -284,87 +311,43 @@ int LetterCmp(const unsigned char **str1, const unsigned char **str2) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Compares letters of Russian and English alphabet of str1 and str2 from the end of each string
+//! Compares letters of Russian and English alphabet of two strAndLen structures from the end
 //!
-//! @param [in] str1 First string which will be compared
-//! @param [in] str2 Second string which will be compared
+//! @param [in] str1 Pointer to the first sAL structure
+//! @param [in] str2 Pointer to the second sAl structure
 //!
 //! @return Returns 0 if strings are equal, otherwise returns distance between
 //!         first different characters (can be >0 or <0)
 //!
-//! @note Keep in mind that this function skips all non-letter symbols/
+//! @note Keep in mind that this function skips all non-letter symbols
 //-------------------------------------------------------------------------------------------------------
 
-int InversedLetterCmp(const unsigned char **str1, const unsigned char **str2) {
+int InversedLetterStrCmp(struct strAndLen *str1, struct strAndLen *str2) {
     assert(str1 != nullptr);
     assert(str2 != nullptr);
 
-    if((*str1) == (*str2)){
+    if(str1->ptr == str2->ptr){
         return 0;
     }
 
-    int idx1 = MyStrLen(*str1) - 1, idx2 = MyStrLen(*str2) - 1;
+    int idx1 = str1->ptrLen - 1, idx2 = str2->ptrLen - 1;
 
 	while (idx1 > -1 && idx2 > -1) {
-		while (!(IsCyrillic((*str1)[idx1]) || isalpha((*str1)[idx1])) && idx1 > -1) {
+		while (!(IsCyrillic(str1->ptr[idx1]) || isalpha(str1->ptr[idx1])) && idx1 > -1) {
 			idx1--;
 		}
-		while (!(IsCyrillic((*str2)[idx2]) || isalpha((*str2)[idx2])) && idx2 > -1) {
+		while (!(IsCyrillic(str2->ptr[idx2]) || isalpha(str2->ptr[idx2])) && idx2 > -1) {
 			idx2--;
 		}
 
-		if ((*str1)[idx1] != (*str2)[idx2] && idx1 > -1 && idx2 > -1) {
-			return (*str1)[idx1] - (*str2)[idx2];
+		if (str1->ptr[idx1] != str2->ptr[idx2] && idx1 > -1 && idx2 > -1) {
+			return str1->ptr[idx1] - str2->ptr[idx2];
 		}
 		idx1--;
 		idx2--;
 	}
 
     return 0;
-}
-
-//-------------------------------------------------------------------------------------------------------
-//! Prints string, which ends '\0' or '\n'
-//!
-//! @param [in] str Pointer to the beginning of string
-//!
-//! @return Returns 1 in success or EOF in case of end of file
-//-------------------------------------------------------------------------------------------------------
-
-int MyPuts(const unsigned char *str) {
-    assert(str != nullptr);
-
-    int i = 0;
-    while (str[i] != '\0' && str[i] != '\n' && str[i] != EOF) {
-        printf("%c", str[i++]);
-    }
-    printf("\n");
-
-    if (str[i] == '\0' || str[i] == '\n') {
-        return 1;
-    }
-
-    return EOF;
-}
-
-//-------------------------------------------------------------------------------------------------------
-//! Counts length of string which ends with '\0' or '\n' or EOF
-//!
-//! @param [in] str Pointer to string
-//!
-//! @return Returns length of string
-//!
-//! @note '\0', '\n' and EOF aren't counted
-//-------------------------------------------------------------------------------------------------------
-
-size_t MyStrLen(const unsigned char *str) {
-    assert(str != nullptr);
-
-    size_t len = 0;
-
-    while (str[len++] != '\n' && str[len] != '\0' && str[len] != EOF);
-
-    return len - 1;
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -376,7 +359,7 @@ size_t MyStrLen(const unsigned char *str) {
 //! @return Returns 1 in case of success or EOF
 //-------------------------------------------------------------------------------------------------------
 
-int MyFPuts(const unsigned char *str, FILE *stream) {
+int MyFPuts(const uchar *str, FILE *stream) {
     assert(str != nullptr);
     assert(stream != nullptr);
 
