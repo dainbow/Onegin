@@ -81,8 +81,8 @@ int main(int argc, char *argv[]) {
     close(input);
     fclose(output);
 
-    free(onegin.buffer);
-    free(onegin.idxArr);
+    free(onegin.buffer = nullptr);
+    free(onegin.idxArr = nullptr);
 }
 
 //-------------------------------------------------------------------------------------------------------
