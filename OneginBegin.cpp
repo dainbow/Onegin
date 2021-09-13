@@ -24,6 +24,7 @@ void SwapPtr(void *str1, void *str2, size_t size);
 
 void CountStr(struct text*);
 void FillIdxArr(struct text*);
+void FreeDM(struct text*);
 
 void MyQsort(void *arr, size_t number, size_t size, int (*comparator) (const void*, const void*));
 
@@ -80,9 +81,7 @@ int main(int argc, char *argv[]) {
 
     close(input);
     fclose(output);
-
-    free(onegin.buffer = nullptr);
-    free(onegin.idxArr = nullptr);
+    FreeDM(&onegin);
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -174,6 +173,20 @@ void FillIdxArr(struct text *text) {
         }
     }
     text->idxArr[text->strAmount - 1].ptrLen = &text->buffer[text->bufSize] - text->idxArr[text->strAmount - 1].ptr - 1;
+}
+
+//-------------------------------------------------------------------------------------------------------
+//! Frees all dynamic arrays of the text structure
+//!
+//! @param [in] text Pointer to the text structure
+//-------------------------------------------------------------------------------------------------------
+
+void FreeDM(struct text *text) {
+    free(text->buffer);
+    text->buffer = nullptr;
+
+    free(text->idxArr);
+    text->idxArr = nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------------
