@@ -20,7 +20,7 @@ const uchar UPPERCASE_A = 'À';
 const uchar LOWERCASE_YA = 'ÿ';
 
 bool IsCyrillic(const uint16_t sym);
-void SwapPtr(void *str1, void *str2, size_t size);
+void SwapMem(char *str1, char *str2, size_t size);
 
 void CountStr(struct text*);
 void FillIdxArr(struct text*);
@@ -72,6 +72,7 @@ int main(int argc, char *argv[]) {
     qsort(onegin.idxArr, onegin.strAmount, sizeof(onegin.idxArr[0]), (int (*) (const void*, const void*))LetterStrCmp);
 
     FILE *output = fopen(OUTPUT_FILE, "w");
+    assert(output != nullptr);
     WriteIdxArr(&onegin, output);
 
     MyQsort(onegin.idxArr, onegin.strAmount, sizeof(onegin.idxArr[0]), (int (*) (const void*, const void*))InversedLetterStrCmp);
@@ -99,35 +100,53 @@ bool IsCyrillic(const uint16_t sym) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Swaps two pointers
+//! Swaps two memory areas
 //!
-//! @param [in] ptr1 Pointer to the first pointer
-//! @param [in] ptr2 Pointer to the second pointer
+//! @param [in] mem1 Pointer to the first memory area
+//! @param [in] mem2 Pointer to the second memory area
 //! @param [in] size Size in bytes of swapping variables
-//!
-//! @note You can swap strings by this function
 //-------------------------------------------------------------------------------------------------------
 
-void SwapPtr(void *ptr1, void *ptr2, size_t size) {
-    assert(ptr1 != nullptr);
-    assert(ptr2 != nullptr);
+void SwapMem(char *mem1, char *mem2, size_t size) {
+    assert(mem1 != nullptr);
+    assert(mem2 != nullptr);
+    assert(isfinite(size));
 
-    if (ptr1 != ptr2) {
-        uint64_t *firstBig = (uint64_t *)ptr1, *secondBig = (uint64_t *)ptr2, tmpBig;
-        size_t curByte = 0;
+    int sizeChange = 0;
 
-        for (; size / sizeof(uint64_t); size -= sizeof(uint64_t), curByte++) {
-            tmpBig = firstBig[curByte];
-            firstBig[curByte] = secondBig[curByte];
-            secondBig[curByte] = tmpBig;
+    while(size) {
+        if (size / sizeof(uint64_t)) {
+            uint64_t tmp = *(uint64_t*) mem1;
+            *(uint64_t*) mem1 = *(uint64_t*) mem2;
+            *(uint64_t*) mem2 = tmp;
+
+            sizeChange = sizeof(uint64_t);
+        }
+        else if (size / sizeof(uint32_t)) {
+            uint32_t tmp = *(uint32_t*) mem1;
+            *(uint32_t*) mem1 = *(uint32_t*) mem2;
+            *(uint32_t*) mem2 = tmp;
+
+            sizeChange = sizeof(uint32_t);
+        }
+        else if (size / sizeof(uint16_t)) {
+            uint16_t tmp = *(uint16_t*) mem1;
+            *(uint16_t*) mem1 = *(uint16_t*) mem2;
+            *(uint16_t*) mem2 = tmp;
+
+            sizeChange = sizeof(uint16_t);
+        }
+        else {
+            uint8_t tmp = *(uint8_t*) mem1;
+            *(uint8_t*) mem1 = *(uint8_t*) mem2;
+            *(uint8_t*) mem2 = tmp;
+
+            sizeChange = sizeof(uint8_t);
         }
 
-        unsigned char *firstLittle = (unsigned char *)((char*)ptr1 + curByte * sizeof(uint64_t)), *secondLittle = (unsigned char *)((char*)ptr2 + curByte * sizeof(uint64_t)), tmpLittle;
-        for (; size; size--, curByte++) {
-            tmpLittle = firstLittle[curByte];
-            firstLittle[curByte] = secondLittle[curByte];
-            secondLittle[curByte] = tmpLittle;
-        }
+        mem1 += sizeChange;
+        mem2 += sizeChange;
+        size -= sizeChange;
     }
 }
 
@@ -138,6 +157,8 @@ void SwapPtr(void *ptr1, void *ptr2, size_t size) {
 //-------------------------------------------------------------------------------------------------------
 
 void CountStr(struct text *text) {
+    assert(text != nullptr);
+
     size_t strCount = 0;
 
     for (size_t curChr = 0; curChr < (text->bufSize); curChr++) {
@@ -163,6 +184,8 @@ void CountStr(struct text *text) {
 //-------------------------------------------------------------------------------------------------------
 
 void FillIdxArr(struct text *text) {
+    assert(text != nullptr);
+
     text->idxArr[0].ptr = &text->buffer[0];
 
     for (size_t curStrBuf = 0, curStrIdx = 1; curStrBuf < text->bufSize; curStrBuf++) {
@@ -182,6 +205,8 @@ void FillIdxArr(struct text *text) {
 //-------------------------------------------------------------------------------------------------------
 
 void FreeDM(struct text *text) {
+    assert(text != nullptr);
+
     free(text->buffer);
     text->buffer = nullptr;
 
@@ -220,7 +245,7 @@ void MyQsort (void *arr, size_t number, size_t size, int (*comparator) (const vo
         }
 
         if (left <= right) {
-            SwapPtr((char*)arr + left * size, (char*)arr + right * size, size);
+            SwapMem((char*)arr + left * size, (char*)arr + right * size, size);
 
             left++;
             right--;
@@ -247,14 +272,12 @@ void MyQsort (void *arr, size_t number, size_t size, int (*comparator) (const vo
 //-------------------------------------------------------------------------------------------------------
 
 void PrintHelp(int argc, char *argv[]) {
-    assert(argv != nullptr);
-
     for (int argIdx = 1; argIdx < argc; argIdx++) {
         if (strcmp(argv[argIdx], "/?") == 0) {
             FILE* help = fopen(HELP_FILE, "r");
 
             if (help == nullptr) {
-                printf("%s not found. REALLY short description: this program writes in output.txt\n1. Original \"Eugene Onegin\"\n2. Sorted strings of it from the beginning\n3. Sorted strings of it from the end", HELP_FILE);
+                printf("%s not found in %s folder. REALLY short description: this program writes in output.txt\n1. Sorted strings of \"Eugene Onegin\" from the beginning\n2. Sorted strings of it from the end\n3. Original \"Eugene Onegin\", I didn't touch Pushkin)", HELP_FILE, argv[0]);
             }
             else {
                 int chr = 0;
@@ -276,6 +299,9 @@ void PrintHelp(int argc, char *argv[]) {
 //-------------------------------------------------------------------------------------------------------
 
 void WriteIdxArr(struct text *text, FILE* output) {
+    assert(text != nullptr);
+    assert(output != nullptr);
+
     for (size_t curStr = 0; curStr < text->strAmount; curStr++) {
         MyFPuts(text->idxArr[curStr].ptr, output);
     }
