@@ -1,10 +1,3 @@
-#include <stdint.h>
-#include <math.h>
-#include <assert.h>
-#include <string.h>
-#include <fcntl.h>
-
-#include "StructWorks.h"
 #include "Utilities.h"
 #include "Onegin.h"
 
@@ -23,13 +16,13 @@ bool IsCyrillic(const uint16_t sym) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Prints short manual for program
+//! Proceess all command line arguemnts of program
 //!
 //! @param [in] argc amount of command line arguments
 //! @param [in] argv array of command line arguments
 //!
 //! @note Program always has 1 argument - its location
-//!       If program doesn't find help.txt it will print REALLY short manual
+//!       If program doesn't find help.txt it will print REALLY short manual, otherwise it prints full description
 //-------------------------------------------------------------------------------------------------------
 
 void CommandLineArgs(int argc, char *argv[]) {

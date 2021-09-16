@@ -1,9 +1,3 @@
-#include <string.h>
-#include <assert.h>
-#include <math.h>
-#include <stdint.h>
-#include <ctype.h>
-
 #include "StructWorks.h"
 #include "Utilities.h"
 
@@ -59,10 +53,10 @@ void SwapMem(char *mem1, char *mem2, size_t size) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Compares letters of Russian and English alphabet of two strAndLen structures from the beginning
+//! Compares letters of Russian and English alphabet of two String structures from the beginning
 //!
-//! @param [in] str1 Pointer to the first sAL structure
-//! @param [in] str2 Pointer to the second sAl structure
+//! @param [in] str1 Pointer to the first String structure
+//! @param [in] str2 Pointer to the second String structure
 //!
 //! @return Returns 0 if strings are equal, otherwise returns distance between
 //!         first different characters (can be >0 or <0)
@@ -100,10 +94,10 @@ int LetterStrCmp(const struct String* str1, const struct String* str2) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Compares letters of Russian and English alphabet of two strAndLen structures from the end
+//! Compares letters of Russian and English alphabet of two String structures from the end
 //!
-//! @param [in] str1 Pointer to the first sAL structure
-//! @param [in] str2 Pointer to the second sAl structure
+//! @param [in] str1 Pointer to the first String structure
+//! @param [in] str2 Pointer to the second String structure
 //!
 //! @return Returns 0 if strings are equal, otherwise returns distance between
 //!         first different characters (can be >0 or <0)

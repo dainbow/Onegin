@@ -1,6 +1,7 @@
 #ifndef _STRUCT_WORKS_H_
 #define _STRUCT_WORKS_H_
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdint.h>
 
@@ -19,6 +20,6 @@ struct Text {
 void TextFromFile(struct Text *text, const char* input);
 void CountStrAmount(struct Text*);
 void FillIdxArr(struct Text*);
-void WriteIdxArr(const struct Text*, FILE* output);
+void WriteStrings(const struct Text*, FILE* output);
 void DestroyText(struct Text*);
 #endif

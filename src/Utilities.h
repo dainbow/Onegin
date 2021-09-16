@@ -1,8 +1,12 @@
 #ifndef _UTILITIES_H_
 #define _UTILITIES_H_
 
-#include <stdint.h>
+#include <stdio.h>
 #include <ctype.h>
+#include <stdint.h>
+#include <math.h>
+#include <assert.h>
+#include <string.h>
 
 const uint8_t UPPERCASE_A = 'À';
 const uint8_t LOWERCASE_YA = 'ÿ';

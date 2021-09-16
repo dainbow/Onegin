@@ -1,13 +1,23 @@
 #include <assert.h>
 #include <string.h>
 #include <sys\stat.h>
-#include <fcntl.h>
-
 #include "StructWorks.h"
 #include "Utilities.h"
 #include "Onegin.h"
 
+//-------------------------------------------------------------------------------------------------------
+//! Reads text from input file to structure Text.
+//!
+//! @param [in] text Pointer to the Text structure
+//! @param [in] inputFile name of input file
+//!
+//! @note You should use all functions from this file to fill up Text structure properly
+//-------------------------------------------------------------------------------------------------------
+
 void TextFromFile(struct Text *text, const char* inputFile) {
+	assert(text != nullptr);
+	assert(inputFile != nullptr);
+	
 	int input = open(inputFile, O_RDONLY, 0);
     assert(input != -1);
 	
@@ -26,7 +36,7 @@ void TextFromFile(struct Text *text, const char* inputFile) {
 //-------------------------------------------------------------------------------------------------------
 //! Counts strings in structure's buffer and set structure's strAmount.
 //!
-//! @param [in] text Pointer to the text structure
+//! @param [in] text Pointer to the Text structure
 //-------------------------------------------------------------------------------------------------------
 
 void CountStrAmount(struct Text *text) {
@@ -48,12 +58,12 @@ void CountStrAmount(struct Text *text) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Fills idxArr of the text structure with pointers on the beginning of each string and count length
+//! Fills stings of the Text structure with pointers on the beginning of each string and count length
 //! of each string.
 //!
-//! @param [in] text Pointer to the text structure
+//! @param [in] text Pointer to the Text structure
 //!
-//! @note You must allocate memory to idxArr (strAndLen structure) before using this function
+//! @note You must allocate memory to strings (array of Strings structures) before using this function
 //-------------------------------------------------------------------------------------------------------
 
 void FillIdxArr(struct Text *text) {
@@ -72,13 +82,13 @@ void FillIdxArr(struct Text *text) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Writes each string of the structure text idxArr
+//! Writes each string of the structure strings of Text in output file
 //!
-//! @param [in] text Pointer to the text structure
+//! @param [in] text Pointer to the Text structure
 //! @param [in] output Pointer to the output stream
 //-------------------------------------------------------------------------------------------------------
 
-void WriteIdxArr(const struct Text *text, FILE* output) {
+void WriteStrings(const struct Text *text, FILE* output) {
     assert(text != nullptr);
     assert(output != nullptr);
 
@@ -89,9 +99,9 @@ void WriteIdxArr(const struct Text *text, FILE* output) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-//! Frees all dynamic arrays of the text structure
+//! Frees all dynamic arrays of the Text structure
 //!
-//! @param [in] text Pointer to the text structure
+//! @param [in] text Pointer to the Text structure
 //-------------------------------------------------------------------------------------------------------
 
 void DestroyText(struct Text *text) {

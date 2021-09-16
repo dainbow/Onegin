@@ -1,5 +1,3 @@
-#include <assert.h>
-
 #include "Sort.h"
 #include "StructWorks.h"
 #include "Utilities.h"
@@ -21,11 +19,11 @@ int main(int argc, char *argv[]) {
 
     FILE *output = fopen(OUTPUT_FILE, "w");
     assert(output != nullptr);
-    WriteIdxArr(&onegin, output);
+    WriteStrings(&onegin, output);
 
     MyQsort(onegin.strings, onegin.strAmount, sizeof(onegin.strings[0]), (int (*) (const void*, const void*))InversedLetterStrCmp);
 
-    WriteIdxArr(&onegin, output);
+    WriteStrings(&onegin, output);
     fputs((const char*)onegin.buffer, output);
 
     fclose(output);
