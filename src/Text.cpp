@@ -58,7 +58,7 @@ void FillStrings(struct Text *text) {
     text->strings[text->strAmount - 1].length = &text->buffer[text->bufSize] - text->strings[text->strAmount - 1].value - 1;
 }
 
-void WriteStrings(const struct Text *text, FILE* output) {
+void PrintStrings(const struct Text *text, FILE* output) {
     assert(text != nullptr);
     assert(output != nullptr);
 

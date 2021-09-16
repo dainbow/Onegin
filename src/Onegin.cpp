@@ -19,11 +19,11 @@ int main(int argc, char *argv[]) {
 
     FILE *output = fopen(OUTPUT_FILE, "w");
     assert(output != nullptr);
-    WriteStrings(&onegin, output);
+    PrintStrings(&onegin, output);
 
     MyQsort(onegin.strings, onegin.strAmount, sizeof(onegin.strings[0]), (int (*) (const void*, const void*))InversedLetterStrCmp);
 
-    WriteStrings(&onegin, output);
+    PrintStrings(&onegin, output);
     fputs((const char*)onegin.buffer, output);
 
     fclose(output);

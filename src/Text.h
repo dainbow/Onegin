@@ -54,7 +54,7 @@ void FillStrings(struct Text*);
 //! @param [in] output Pointer to the output stream
 //-------------------------------------------------------------------------------------------------------
 
-void WriteStrings(const struct Text*, FILE* output);
+void PrintStrings(const struct Text*, FILE* output);
 
 //-------------------------------------------------------------------------------------------------------
 //! Frees all dynamic arrays of the Text structure
