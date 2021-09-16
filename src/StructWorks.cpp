@@ -15,13 +15,13 @@
 //-------------------------------------------------------------------------------------------------------
 
 void TextFromFile(struct Text *text, const char* inputFile) {
-	assert(text != nullptr);
-	assert(inputFile != nullptr);
-	
-	int input = open(inputFile, O_RDONLY, 0);
+    assert(text != nullptr);
+    assert(inputFile != nullptr);
+
+    int input = open(inputFile, O_RDONLY, 0);
     assert(input != -1);
-	
-	struct stat inputStat;
+
+    struct stat inputStat;
     fstat(input, &inputStat);
 
     text->bufSize = inputStat.st_size;
@@ -29,8 +29,8 @@ void TextFromFile(struct Text *text, const char* inputFile) {
     assert(text->buffer != nullptr);
 
     read(input, text->buffer, text->bufSize);
-	
-	close(input);	
+
+    close(input);
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ void FillIdxArr(struct Text *text) {
         if (text->buffer[curStrBuf - 1] == '\n') {
             text->strings[curStrIdx].value = &text->buffer[curStrBuf];
             text->strings[curStrIdx - 1].length = text->strings[curStrIdx].value - text->strings[curStrIdx - 1].value - 1;
-			
+
             curStrIdx++;
         }
     }
