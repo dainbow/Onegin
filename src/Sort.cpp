@@ -114,7 +114,7 @@ int InversedLetterStrCmp(const struct String *str1, const struct String *str2) {
     }
 
     int idx1 = str1->length - 1, idx2 = str2->length - 1;
-	
+
 	while (idx1 > -1 && idx2 > -1) {
 		while (!(IsCyrillic(str1->value[idx1]) || isalpha(str1->value[idx1])) && idx1 > -1) {
 			idx1--;
@@ -153,9 +153,9 @@ void MyQsort (void *arr, size_t number, size_t size, int (*comparator) (const vo
 
     long int left = 0;
     long int right = number - 1;
-	
+
 	char* mid = (char*)arr + (number / 2) * size;
-		
+
     do {
         while(comparator((char*)arr + left * size, mid) < 0) {
             left++;
@@ -166,14 +166,14 @@ void MyQsort (void *arr, size_t number, size_t size, int (*comparator) (const vo
 
         if (left < right) {
             SwapMem((char*)arr + left * size, (char*)arr + right * size, size);
-			
+
 			if (mid == (char*)arr + left * size) {
 				mid = (char*)arr + right * size;
 			}
 			if (mid == (char*)arr + right * size) {
 				mid = (char*)arr + left * size;
 			}
-			
+
             left++;
             right--;
         }
