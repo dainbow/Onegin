@@ -4,9 +4,9 @@
 #include <sys\stat.h>
 
 const char END_OF_PART[] = "------------------------------------------------------\n";
-const char INPUT_FILE[] = "Onegin.txt";
+const char INPUT_FILE[]  = "Onegin.txt";
 const char OUTPUT_FILE[] = "output.txt";
-const char HELP_FILE[] = "help.txt";
+const char HELP_FILE[]   = "help.txt";
 
 //-------------------------------------------------------------------------------------------------------
 //! Read all command line arguemnts of program
@@ -25,4 +25,5 @@ void ReadCommandLineArgs(int argc, char *argv[]);
 //-------------------------------------------------------------------------------------------------------
 
 void PrintHelp();
+
 #endif

@@ -13,10 +13,7 @@ void ReadTextFromFile(struct Text *text, const char* inputFile) {
     int input = open(inputFile, O_RDONLY, 0);
     assert(input != -1);
 
-    struct stat inputStat;
-    fstat(input, &inputStat);
-
-    text->bufSize = inputStat.st_size;
+    text->bufSize = CountFileSize(input);
     text->buffer = (uint8_t*)calloc(text->bufSize + 1, sizeof(text->buffer[0]));
     assert(text->buffer != nullptr);
 
@@ -34,10 +31,6 @@ void CountStrAmount(struct Text *text) {
         if (text->buffer[curChr] == '\n') {
             strCount++;
         }
-
-        if (text->buffer[curChr] == '\r') {
-            text->buffer[curChr] = '\0';
-        }
     }
 
     text->strAmount = strCount;
@@ -45,6 +38,9 @@ void CountStrAmount(struct Text *text) {
 
 void FillStrings(struct Text *text) {
     assert(text != nullptr);
+	
+	text->strings = (struct String*)calloc(text->strAmount + 1, sizeof(text->strings[0]));
+    assert(text->strings != nullptr);
 
     text->strings[0].value = &text->buffer[1];
     for (size_t curStrBuf = 1, curStrIdx = 1; curStrBuf < text->bufSize; curStrBuf++) {
@@ -56,6 +52,13 @@ void FillStrings(struct Text *text) {
         }
     }
     text->strings[text->strAmount - 1].length = &text->buffer[text->bufSize] - text->strings[text->strAmount - 1].value - 1;
+}
+
+int MakeStrings(struct Text *text) {
+	CountStrAmount(text);
+	FillStrings(text);
+
+	return 1;
 }
 
 void PrintStrings(const struct Text *text, FILE* output) {

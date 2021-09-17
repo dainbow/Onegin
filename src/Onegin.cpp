@@ -3,25 +3,21 @@
 #include "Utilities.h"
 #include "Onegin.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {	
     ReadCommandLineArgs(argc, argv);
 
-    struct Text onegin;
+    struct Text onegin = {};
     ReadTextFromFile(&onegin, INPUT_FILE);
 
-    CountStrAmount(&onegin);
-
-    onegin.strings = (struct String*)calloc(onegin.strAmount, sizeof(onegin.strings[0]));
-    assert(onegin.strings != nullptr);
-
-    FillStrings(&onegin);
+    MakeStrings(&onegin);
+	
     MyQsort(onegin.strings, onegin.strAmount, sizeof(onegin.strings[0]), (int (*) (const void*, const void*))LetterStrCmp);
 
-    FILE *output = fopen(OUTPUT_FILE, "w");
+    FILE *output = fopen(OUTPUT_FILE, "wb");
     assert(output != nullptr);
     PrintStrings(&onegin, output);
 
-    MyQsort(onegin.strings, onegin.strAmount, sizeof(onegin.strings[0]), (int (*) (const void*, const void*))InversedLetterStrCmp);
+    qsort(  onegin.strings, onegin.strAmount, sizeof(onegin.strings[0]), (int (*) (const void*, const void*))InversedLetterStrCmp);
 
     PrintStrings(&onegin, output);
     fputs((const char*)onegin.buffer, output);
@@ -31,6 +27,10 @@ int main(int argc, char *argv[]) {
 }
 
 void ReadCommandLineArgs(int argc, char *argv[]) {
+	assert(isfinite(argc));
+	assert(argc > 0);
+	assert(argv != nullptr);
+	
     for (int argIdx = 1; argIdx < argc; argIdx++) {
         if (strcmp(argv[argIdx], "/?") == 0) {
 			PrintHelp();
@@ -43,16 +43,15 @@ void PrintHelp() {
 
 	if (help == -1) {
 		printf("%s not found. REALLY short description: this program writes in output.txt\n1. Sorted strings of \"Eugene Onegin\" from the beginning\n2. Sorted strings of it from the end\n3. Original \"Eugene Onegin\", I didn't touch Pushkin)", HELP_FILE);
+		return;
 	}
-	else {
-		struct stat helpStat;
-		fstat(help, &helpStat);
-		
-		char bufHelp[helpStat.st_size] = "";
-		read(help, &bufHelp, helpStat.st_size - 3);
-		
-		printf("%s\n", bufHelp);
-		
-		close(help);
-	}
+	
+	size_t helpSize = CountFileSize(help);	
+	char bufHelp[helpSize] = {};
+	
+	read(help, &bufHelp, helpSize);
+	
+	printf("%s\n", bufHelp);
+	
+	close(help);
 }

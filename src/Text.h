@@ -37,7 +37,7 @@ void ReadTextFromFile(struct Text *text, const char* input);
 void CountStrAmount(struct Text*);
 
 //-------------------------------------------------------------------------------------------------------
-//! Fills stings of the Text structure with pointers on the beginning of each string and count length
+//! Fills strings of the Text structure with pointers on the beginning of each string and count length
 //! of each string.
 //!
 //! @param [in] text Pointer to the Text structure
@@ -46,6 +46,14 @@ void CountStrAmount(struct Text*);
 //-------------------------------------------------------------------------------------------------------
 
 void FillStrings(struct Text*);
+
+//-------------------------------------------------------------------------------------------------------
+//! Counts strings and fills strings of the Text structure using CountStrAmount and FillStrings
+//!
+//! @param [in] text Pointer to the Text structure
+//-------------------------------------------------------------------------------------------------------
+
+int MakeStrings(struct Text *text);
 
 //-------------------------------------------------------------------------------------------------------
 //! Writes each string of the structure strings of Text in output file
