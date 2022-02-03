@@ -10,7 +10,7 @@ void ReadTextFromFile(struct Text *text, const char* inputFile) {
     assert(text != nullptr);
     assert(inputFile != nullptr);
 
-    int input = open(inputFile, O_RDONLY, 0);
+    int input = open(inputFile, O_RDONLY | O_BINARY, 0);
     assert(input != -1);
 
     text->bufSize = CountFileSize(input);

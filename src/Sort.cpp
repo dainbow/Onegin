@@ -51,6 +51,7 @@ int LetterStrCmp(const struct String* str1, const struct String* str2) {
     assert(str1 != nullptr);
     assert(str2 != nullptr);
 
+
     if (str1->value == str2->value) {
         return 0;
     }
